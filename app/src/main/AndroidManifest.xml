@@ -1,0 +1,40 @@
+#include <opencv2/opencv.hpp>
+#include <vector>
+
+cv::Mat stackAndZoom(const std::vector<cv::Mat>& frames, float zoom) {
+    cv::Mat ref;
+    cv::cvtColor(frames[0], ref, cv::COLOR_BGR2GRAY);
+    ref.convertTo(ref, CV_32F);
+
+    cv::Mat acc = cv::Mat::zeros(frames[0].size(), CV_32FC3);
+
+    for (const auto& f : frames) {
+        cv::Mat g;
+        cv::cvtColor(f, g, cv::COLOR_BGR2GRAY);
+        g.convertTo(g, CV_32F);
+
+        // hitung pergeseran akibat tangan goyang
+        cv::Point2d s = cv::phaseCorrelate(ref, g);
+        cv::Mat M = (cv::Mat_<double>(2, 3) << 1, 0, -s.x, 0, 1, -s.y);
+
+        cv::Mat f32, aligned;
+        f.convertTo(f32, CV_32FC3);
+        cv::warpAffine(f32, aligned, M, f.size(), cv::INTER_CUBIC);
+        acc += aligned;
+    }
+    acc /= (float)frames.size();   // rata-rata: noise berkurang
+    cv::Mat avg;
+    acc.convertTo(avg, CV_8UC3);
+
+    // crop tengah sesuai zoom, lalu perbesar
+    int w = avg.cols / zoom, h = avg.rows / zoom;
+    cv::Rect roi((avg.cols - w) / 2, (avg.rows - h) / 2, w, h);
+    cv::Mat out;
+    cv::resize(avg(roi), out, avg.size(), 0, 0, cv::INTER_LANCZOS4);
+
+    // unsharp mask untuk mempertajam
+    cv::Mat blur;
+    cv::GaussianBlur(out, blur, cv::Size(0, 0), 3);
+    cv::addWeighted(out, 1.5, blur, -0.5, 0, out);
+    return out;
+}
