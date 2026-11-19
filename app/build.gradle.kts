@@ -23,3 +23,12 @@ android {
         jvmTarget = "17"
     }
 }
+
+dependencies {
+    val camerax = "1.3.4"
+    implementation("androidx.camera:camera-core:$camerax")
+    implementation("androidx.camera:camera-camera2:$camerax")
+    implementation("androidx.camera:camera-lifecycle:$camerax")
+    implementation("androidx.camera:camera-view:$camerax")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+}
